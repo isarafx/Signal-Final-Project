@@ -1,11 +1,11 @@
 # Signal Final Project
 
-This is group final project in 010123106 Signal and System class KMUTNB.
+This is group final project in 010123106 Signal and System class KMUTNB.<br>
 An GUI program to control DS1054Z using Tkinter and DS1054Z class
 
 ## Installation
 
-only for Python >= 3.x
+only for Python >= 3.x<br>
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install dependency before running program.
 
 ```bash
