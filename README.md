@@ -11,6 +11,10 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install depende
 ```bash
 pip install -r requirements.txt
 ```
+##How to use
+Currently developing codee.py is test file and realwork.py is main program<br>
+wave_sample folder is contain various of signal list that can be use to plot
+<br>when you dont have access to the equiqment(for conveniently coding) 
 ### Dependency
 
 * [ds1054z](https://github.com/pklaus/ds1054z) - for doing most things with ds1054z
