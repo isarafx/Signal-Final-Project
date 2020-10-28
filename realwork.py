@@ -59,18 +59,19 @@ class Application:
         self.timediv.bind("<<ComboboxSelected>>", self._settimediv)
         self.x_offframe = tkinter.LabelFrame(self.right_frame, text="X-Offset")
         self.x_offframe.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
-        self.x_offset = tkinter.Scale(self.x_offframe, orient=tkinter.HORIZONTAL)
+        self.x_offset = tkinter.Scale(self.x_offframe, orient=tkinter.HORIZONTAL, from_=-100, to=100)
         self.x_offset.pack(side=tkinter.TOP, fill=tkinter.BOTH)
         self.x_offset.bind("<ButtonRelease-1>", self._offset_x_change)
         self.y_offframe = tkinter.LabelFrame(self.right_frame, text="Y-Offset")
         self.y_offframe.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
-        self.y_offset = tkinter.Scale(self.y_offframe, orient=tkinter.HORIZONTAL)
+        self.y_offset = tkinter.Scale(self.y_offframe, orient=tkinter.HORIZONTAL, from_=-100, to=100)
         self.y_offset.pack(side=tkinter.TOP, fill=tkinter.BOTH)
         self.y_offset.bind("<ButtonRelease-1>", self._offset_y_change)
         self.trigger_offframe = tkinter.LabelFrame(self.right_frame, text="Trigger-Offset")
         self.trigger_offframe.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
-        self.trigger_offset = tkinter.Scale(self.trigger_offframe, orient=tkinter.HORIZONTAL)
+        self.trigger_offset = tkinter.Scale(self.trigger_offframe, orient=tkinter.HORIZONTAL, from_=-100, to=100)
         self.trigger_offset.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        self.trigger_offset.bind("<ButtonRelease-1>", self._offset_trigger_change)
         self.probe_offframe = tkinter.LabelFrame(self.right_frame, text="Probe-Offset")
         self.probe_offframe.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
         self.probe_offset = tkinter.ttk.Combobox(self.probe_offframe, state="readonly")
@@ -83,7 +84,7 @@ class Application:
         self.run_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
         self.stop_button = tkinter.Button(self.run_button_frame, text='STOP', command=self._setvoltdiv)
         self.stop_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
-        self.auto_button = tkinter.Button(self.run_button_frame, text='AUTO', command=self._settimediv)
+        self.auto_button = tkinter.Button(self.run_button_frame, text='AUTO', command=self._savepic)
         self.auto_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
         self.report = tkinter.Label(self.root, text='some nonsense detail for nerd')
         self.report.pack(side=tkinter.TOP)
@@ -100,13 +101,24 @@ class Application:
 
         self.channel_frame = tkinter.Frame(self.left_frame)
         self.channel_frame.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=1)
-        self.ch1 = tkinter.Button(self.channel_frame, text='channel_1')
+
+        self.chv1 = tkinter.IntVar()
+        self.chv2 = tkinter.IntVar()
+        self.chv3 = tkinter.IntVar()
+        self.chv4 = tkinter.IntVar()
+        self.ch1 = tkinter.Checkbutton(self.channel_frame, text='ch1', variable=self.chv1)
+        self.ch2 = tkinter.Checkbutton(self.channel_frame, text='ch2', variable=self.chv2)
+        self.ch3 = tkinter.Checkbutton(self.channel_frame, text='ch3', variable=self.chv3)
+        self.ch4 = tkinter.Checkbutton(self.channel_frame, text='ch4', variable=self.chv4)
         self.ch1.pack(side=tkinter.LEFT, expand=1)
-        self.ch2 = tkinter.Button(self.channel_frame, text='channel_2')
         self.ch2.pack(side=tkinter.LEFT, expand=1)
+        self.ch3.pack(side=tkinter.LEFT, expand=1)
+        self.ch4.pack(side=tkinter.LEFT, expand=1)
 
         self.ui_item = [self.voltdiv, self.timediv, self.x_offset, self.y_offset, self.trigger_offset,
-                        self.probe_offset, self.ch1, self.ch2, self.run_button, self.stop_button, self.auto_button]
+                        self.probe_offset, self.ch1, self.ch2, self.ch3, self.ch4,
+                        self.run_button, self.stop_button, self.auto_button]
+
         self.off_ui()
 
 
@@ -134,12 +146,12 @@ class Application:
             self.status['text'] = "Login Failed"
         self.root.after(1000, self.check_connection)
 
+    def _savepic(self):
+        self.fig.savefig('potato.png')
     def _setvoltdiv(self, event=0):
         self.scope.set_channel_scale('CHAN1', self.volt_div_range[self.voltdiv.current()])
-        self._y_offset_limit()
     def _settimediv(self, event=0):
         self.scope.timebase_scale = self.time_div_range[self.timediv.current()]
-        self._x_offset_limit()
     def _update_graph(self):
         t = np.arange(0, 12, .01)
         signal = self.scope.get_waveform_samples('CHAN1')
@@ -150,44 +162,31 @@ class Application:
         self.canvas.draw()
         self.canvas.flush_events()
 
-        """
-        self.fig.add_subplot(111).plot(t, signal)
-        self.fig = Figure(figsize=(8, 4.5), dpi=100)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.left_frame)  # A tk.DrawingArea.
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
-        """
 
-    def _x_offset_limit(self):
-        if self.scope.timebase_scale < 1 :
-            self.x_offset['from_'] = self.scope.timebase_scale * -6 * 1E6
-            self.x_offset['to'] = self.scope.timebase_scale * 6 * 1E6
-        elif self.scope.timebase_scale < 1E-3 :
-            self.x_offset['from_'] = self.scope.timebase_scale * -6 * 1E9
-            self.x_offset['to'] = self.scope.timebase_scale * 6 * 1E9
-        elif self.scope.timebase_scale < 1E-6 :
-            self.x_offset['from_'] = self.scope.timebase_scale * -6 * 1E12
-            self.x_offset['to'] = self.scope.timebase_scale * 6 * 1E12
-        else:
-            self.x_offset['from_'] = self.scope.timebase_scale * -6
-            self.x_offset['to'] = self.scope.timebase_scale * 6
-        self.x_offset['from_'] = self.scope.timebase_scale * -9
-        self.x_offset['to'] = self.scope.timebase_scale * 9
-    def _y_offset_limit(self):
-        self.y_offset['from_'] = self.scope.get_channel_scale('CHAN1') * -6
-        self.y_offset['to'] = self.scope.get_channel_scale('CHAN1') * 6
-    def _trigger_offset_limit(self):
-        pass
-
+    """
+    slider using -100 - 100 percentage 
+    offset is calculate from slider value(percentage) * block number * time/volt div
+    block number is the number you want trigger to be able to shift
+    for example look at scope monitor you will find that scope have 12*8 block
+    """
     def _offset_x_change(self, event=0):
-        pass
+        block_number = 6
+        offset = 0.01*self.x_offset.get() * block_number * self.time_div_range[self.timediv.current()]
+        self.scope.timebase_offset = 0
+        self.scope.timebase_offset = offset
+        self._update_graph()
+        print(block_number,'-', self.x_offset.get(),'-', self.time_div_range[self.timediv.current()], '-',offset)
     def _offset_y_change(self, event=0):
-        try:
-            self.scope.set_channel_offset('CHAN1', self.y_offset.get())
-        except Exception as e:
-            print(e)
+        block_number = 6
+        offset = 0.01*self.y_offset.get() * block_number * self.volt_div_range[self.voltdiv.current()]
+        self.scope.set_channel_offset('CHAN1', 0)
+        self.scope.set_channel_offset('CHAN1', offset)
+        self._update_graph()
+        print(block_number,'-', self.y_offset.get(),'-', self.volt_div_range[self.voltdiv.current()], '-',offset)
     def _offset_trigger_change(self, event=0):
-        pass
+        offset = self.trigger_offset.get()
+        self._update_graph()
+        print(offset)
 
     """
     on_ui and off_ui is method for disable or enable the user interface
