@@ -4,8 +4,10 @@ from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
+from matplotlib import style
 import numpy as np
 from ds1054z import DS1054Z
+style.use("ggplot")
 
 class Application:
     def __init__(self, root):
