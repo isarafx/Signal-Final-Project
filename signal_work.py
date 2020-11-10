@@ -11,9 +11,9 @@ import pickle
 import pathlib
 from ds1054z import DS1054Z
 class Profile:
-    def __init__(self, show_ch=[1,0,0,0], ch1=[0,1,0], ch2=[0,1,0], ch3=[0,1,0], ch4=[0,1,0], y_offset=0, time_div=0, res=1, current_ch=0, ip='192.168.1.1', dev=0, listdata=[]):
+    def __init__(self, show_ch=[1,0,0,0], ch1=[0,0], ch2=[0,0], ch3=[0,0], ch4=[0,0], y_offset=0, time_div=0, res=1, current_ch=0, ip='192.168.1.1', dev=0, listdata=[]):
         self.show_ch = show_ch          #[1,1,1,1] channel 1-4
-        self.ch1 = ch1                  #[voltdiv, probeoff, x_off]
+        self.ch1 = ch1                  #[voltdiv, x_off]
         self.ch2 = ch2
         self.ch3 = ch3
         self.ch4 = ch4
@@ -36,8 +36,7 @@ class Application:
         self.temp_profile = Profile()
         self.profile_list = [self.profile1, self.profile2, self.profile3, self.profile4, self.temp_profile]
         self.current_profile = self.temp_profile
-        self.probe_range = [1,2,5,10]
-        self.ch_range = ['ch1', 'ch2', 'ch3', 'ch4']
+        self.ch_range = ['CHAN1', 'CHAN2', 'CHAN3', 'CHAN4']
         self.volt_div_range = [10,5,2,1,0.5,0.2,0.1,0.05,0.02,0.01,0.005,0.002,0.001]
         self.time_div_range = [50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001, 500E-6, 200E-6,
                           100E-6, 50E-6, 20E-6, 10E-6, 5E-6, 2E-6, 1E-6, 500E-9, 200E-9, 100E-9, 50E-9, 20E-9, 10E-9,
@@ -135,16 +134,14 @@ class Application:
                                                        "\ngithub.com/isarafx/Signal-Final-Project")
 
     """
-    update ipbox, channel_show, channel, volt-div, time-div, probe-offset, x-offset, y-offset,sampling resolution
+    update ipbox, channel_show, channel, volt-div, time-div, x-offset, y-offset,sampling resolution
     """
     def _update_ui(self):
-        self.temp_profile = self.pr
-    #ui section seperate to make this code look cleaner
+        pass
     def user_interface(self):
-
+        # ui section seperate to make this code look cleaner
         #menubar section
         menubar = tkinter.Menu(root)
-
         # create a pulldown menu, and add it to the menu bar
         self.filemenu = tkinter.Menu(menubar, tearoff=0)
         self.filemenu.add_command(label="New", command=self.new_user)
@@ -184,7 +181,7 @@ class Application:
         self.ip_box = tkinter.Entry(self.ip_frame, textvariable=useless_var)
         self.ip_box.pack(side=tkinter.LEFT)
         useless_var.set('169.254.1.5')
-        self.ip_button = tkinter.Button(self.ip_frame, text='enter')
+        self.ip_button = tkinter.Button(self.ip_frame, text='enter', command=self._connect)
         self.ip_button.pack(side=tkinter.LEFT)
         self.status = tkinter.Label(self.ip_frame, text='please enter ip address first')
         self.status.pack(side=tkinter.LEFT)
@@ -195,35 +192,32 @@ class Application:
         self.left_frame.pack(side=tkinter.LEFT)
         self.right_frame = tkinter.Frame(self.second_frame)
         self.right_frame.pack(side=tkinter.RIGHT, fill=tkinter.BOTH, expand=1)
-        self.chdiv_frame = tkinter.LabelFrame(self.right_frame, text='Volt-div,  Time-div')
+        self.chdiv_frame = tkinter.Label(self.right_frame)
         self.chdiv_frame.pack(side=tkinter.TOP)
-        self.voltdiv = tkinter.ttk.Combobox(self.chdiv_frame, state="readonly", values=self.volt_div_text)
-        self.voltdiv.pack(side=tkinter.LEFT)
-        self.voltdiv.current(1)
-        # self.voltdiv.bind("<<ComboboxSelected>>", self._setvoltdiv)
-        self.probe_offset = tkinter.ttk.Combobox(self.chdiv_frame, state="readonly", values=self.probe_range)
-        self.probe_offset.pack(side=tkinter.LEFT)
-        self.probe_offset.current(1)
-        # self.voltdiv.bind("<<ComboboxSelected>>", self._setvoltdiv)
+        self.timediv = tkinter.ttk.Combobox(self.chdiv_frame, state="readonly", values=self.time_div_text)
+        self.timediv.pack(side=tkinter.LEFT, fill=tkinter.X, expand=1)
+        self.timediv.current(1)
+        self.timediv.bind("<<ComboboxSelected>>", self._settimediv)
         self.chdiv2_frame = tkinter.Frame(self.right_frame)
         self.chdiv2_frame.pack(side=tkinter.TOP)
         self.select_ch = tkinter.ttk.Combobox(self.chdiv2_frame, state="readonly", values=self.ch_range)
         self.select_ch.pack(side=tkinter.LEFT)
         self.select_ch.current(1)
-        self.timediv = tkinter.ttk.Combobox(self.chdiv2_frame, state="readonly", values=self.time_div_text)
-        self.timediv.pack(side=tkinter.TOP)
-        self.timediv.current(1)
-        # self.timediv.bind("<<ComboboxSelected>>", self._settimediv)
+
+        self.voltdiv = tkinter.ttk.Combobox(self.chdiv2_frame, state="readonly", values=self.volt_div_text)
+        self.voltdiv.pack(side=tkinter.LEFT)
+        self.voltdiv.current(1)
+        self.voltdiv.bind("<<ComboboxSelected>>", self._setvoltdiv)
         self.x_offframe = tkinter.LabelFrame(self.right_frame, text="X-Offset")
         self.x_offframe.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
         self.x_offset = tkinter.Scale(self.x_offframe, orient=tkinter.HORIZONTAL, from_=-100, to=100)
         self.x_offset.pack(side=tkinter.TOP, fill=tkinter.BOTH)
-        # self.x_offset.bind("<ButtonRelease-1>", self._offset_x_change)
+        self.x_offset.bind("<ButtonRelease-1>", self._offset_x_change)
         self.y_offframe = tkinter.LabelFrame(self.right_frame, text="Y-Offset")
         self.y_offframe.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
         self.y_offset = tkinter.Scale(self.y_offframe, orient=tkinter.HORIZONTAL, from_=-100, to=100)
         self.y_offset.pack(side=tkinter.TOP, fill=tkinter.BOTH)
-        # self.y_offset.bind("<ButtonRelease-1>", self._offset_y_change)
+        self.y_offset.bind("<ButtonRelease-1>", self._offset_y_change)
         self.sampling_res_frame = tkinter.LabelFrame(self.right_frame, text="Sampling_Resolution")
         self.sampling_res_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
         self.sampling_offset = tkinter.Scale(self.sampling_res_frame, orient=tkinter.HORIZONTAL, from_=1, to=15)
@@ -271,9 +265,43 @@ class Application:
                          self.ch1, self.ch2, self.ch3, self.ch4,
                         self.run_button, self.stop_button, self.auto_button]
 
+    def _connect(self):
+
+        self.temp_profile.ip = self.ip_box.get()
+        self.scope = DS1054Z(self.temp_profile.ip)
+        print("Connected to: ", self.scope.idn)
+        self.report['text'] = self.scope.idn
+        self.status['text'] = "Login Successful"
 
 
+    def _offset_x_change(self, event=0):
+        block_number = 6
+        offset = 0.01 * self.x_offset.get() * block_number * self.time_div_range[self.timediv.current()]
+        self.scope.timebase_offset = 0
+        self.scope.timebase_offset = offset
+        self.temp_profile.ch1[1] = self.x_offset.get()
+        print(block_number, '-', self.x_offset.get(), '-', self.time_div_range[self.timediv.current()], '-', offset)
+
+    def _offset_y_change(self, event=0):
+        block_number = 6
+        offset = 0.01 * self.y_offset.get() * block_number * self.volt_div_range[self.voltdiv.current()]
+        self.scope.set_channel_offset('CHAN1', 0)
+        self.scope.set_channel_offset('CHAN1', offset)
+        self.temp_profile.y_offset= self.y_offset.get()
+        print(block_number, '-', self.y_offset.get(), '-', self.volt_div_range[self.voltdiv.current()], '-', offset)
+
+    def _setvoltdiv(self, event=0):
+        try:
+            print(self.volt_div_range[self.voltdiv.current()])
+            self.scope.set_channel_scale(self.select_ch.get(), self.volt_div_range[self.voltdiv.current()])
+        except Exception as e:print(e)
+
+    def _settimediv(self, event=0):
+        try:
+            self.scope.timebase_scale = self.time_div_range[self.timediv.current()]
+        except Exception as e: print(e)
 
 root = tkinter.Tk()
 gui = Application(root)
 root.mainloop()
+
