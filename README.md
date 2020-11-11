@@ -1,3 +1,4 @@
+![ภาพ](https://user-images.githubusercontent.com/32303293/98802832-72f68000-2446-11eb-8ea9-9bae3b9840ad.png)
 # Signal Final Project
 
 This is group final project in 010123106 Signal and System class KMUTNB.<br>
@@ -5,11 +6,11 @@ An GUI program to control DS1054Z using Tkinter and DS1054Z class
 
 only for Python >= 3.x<br>
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install dependency before running program.<br>
-Currently developing codee.py is test file,<br> realwork is testing for gui and  signal_work.py is main program<br>
+codee.py is test file,<br> realwork is testing for gui and  signal_work.py is main program<br>
 wave_sample folder is contain various of signal list that can be use to plot
-<br>when you dont have access to the equiqment(for conveniently coding) 
+<br>when you dont have access to the equiqment(for conveniently coding) <br>
 
-##How to use
+##How to use<br>
 Create new enviroment or using the exist one and git pull this file
 ```bash
 git init
@@ -24,7 +25,7 @@ Then install the required dependency first
 ```bash
 pip install -r requirements.txt
 ```
-and you could run our program using your IDE or thhrough command line
+and you could run our program using IDE of your choice or through command line
 ```bash
 python signal_work.py
 ```
