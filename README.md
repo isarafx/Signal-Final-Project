@@ -20,6 +20,7 @@ wave_sample folder is contain various of signal list that can be use to plot
 * [ds1054z](https://github.com/pklaus/ds1054z) - for doing most things with ds1054z
 * [NumPY](https://github.com/numpy/numpy) - not crucial but useful tools for create ploting list
 * Tkinter - gui
+* [Matplotlib](https://github.com/matplotlib/matplotlib) - for plotting graph
 
 Our Group consist of 3 members
 
