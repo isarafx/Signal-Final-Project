@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# author:Isara, Phichet, Saksit
+# github: https://github.com/isarafx/Signal-Final-Project
+# preview video: youtube.com/watch?v=yRimSoQqzYQ
+# 11-11-2020
+
 import tkinter
 import tkinter.ttk
 import tkinter.filedialog
@@ -7,6 +14,7 @@ from matplotlib.backends.backend_tkagg import (
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 from matplotlib import style
+from PIL import Image, ImageOps, ImageEnhance
 style.use("ggplot")
 import numpy as np
 import pickle
@@ -26,6 +34,7 @@ class Application(tkinter.Tk):
         self.ch2_info = [0, 0, 0]
         self.ch3_info = [0, 0, 0]
         self.ch4_info = [0, 0, 0]
+        self.block_number = 6
         self.ch_range = ['CHAN1', 'CHAN2', 'CHAN3', 'CHAN4']
         self.volt_div_range = [100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001]
         self.time_div_range = [50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001, 500E-6,
@@ -96,16 +105,14 @@ class Application(tkinter.Tk):
         self.sampling_res_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
         self.sampling_offset = tkinter.Scale(self.sampling_res_frame, orient=tkinter.HORIZONTAL, from_=1, to=15)
         self.sampling_offset.pack(side=tkinter.TOP, fill=tkinter.BOTH)
-        # self.sampling_offset.bind("<ButtonRelease-1>", self._sampling_change)
+        self.sampling_offset.bind("<ButtonRelease-1>")
 
         self.run_button_frame = tkinter.Frame(self.right_frame)
         self.run_button_frame.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=1)
-        self.run_button = tkinter.Button(self.run_button_frame, text='RUN', command=self._select_channel)
+        self.run_button = tkinter.Button(self.run_button_frame, text='RUN', bg='#72f745', fg='#000000', command=self.run)
         self.run_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
-        self.stop_button = tkinter.Button(self.run_button_frame, text='STOP')
+        self.stop_button = tkinter.Button(self.run_button_frame, text='STOP', bg='#f65656', fg='#000000', command=self.stop)
         self.stop_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
-        self.auto_button = tkinter.Button(self.run_button_frame, text='AUTO')
-        self.auto_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
         self.report = tkinter.Label(self, text='some nonsense detail for nerd')
         self.report.pack(side=tkinter.TOP)
 
@@ -122,8 +129,9 @@ class Application(tkinter.Tk):
         self.ax.set(ylim=(-4 * Vdiv, 4 * Vdiv))
         self.ax.locator_params(axis="x", nbins=12)
         self.ax.locator_params(axis="y", nbins=8)
-
-        self.fig.suptitle("""SAMPLE \n""", fontweight="bold")
+        self.ax.axes.yaxis.set_ticklabels([])
+        self.ax.axes.xaxis.set_ticklabels([])
+        self.fig.suptitle("Signal and System \n""", fontweight="bold")
         self.line1, = self.ax.plot(self.t, signal, '-r', color='r', label='channel 1')
         self.line2, = self.ax.plot(self.t, signal2, '-r', color='b', label='channel 2')
         self.line3, = self.ax.plot(self.t, signal3, '-r', color='k', label='channel 3')
@@ -155,12 +163,28 @@ class Application(tkinter.Tk):
         self.ch3.pack(side=tkinter.LEFT, expand=1)
         self.ch4.pack(side=tkinter.LEFT, expand=1)
 
+        self.plotdot_frame = tkinter.Frame(self)
+        self.plotdot_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+
         self.ui_item = [self.voltdiv, self.timediv, self.x_offset, self.y_offset, self.sampling_offset,
                          self.ch1, self.ch2, self.ch3, self.ch4,
-                        self.run_button, self.stop_button, self.auto_button]
+                        self.run_button, self.stop_button]
+
+    def run(self):
+        try:
+            self.scope.run()
+        except Exception as E:
+            print(E)
+
+    def stop(self):
+        try:
+            self.scope.stop()
+        except Exception as E:
+            print(E)
 
     def on_key_event(event):
         key_press_handler(event, canvas, toolbar)
+
 
 
     def _connect(self):
@@ -181,11 +205,12 @@ class Application(tkinter.Tk):
         # print(block_number, '-', self.x_offset.get(), '-', self.time_div_range[self.timediv.current()], '-', offset)
 
     def _offset_y_change(self, event=0):
-        block_number = 6
-        offset = 0.01 * self.y_offset.get() * block_number * self.volt_div_range[self.voltdiv.current()]
+        self.block_number = 6
+        offset = 0.01 * self.y_offset.get() * self.block_number * self.volt_div_range[self.voltdiv.current()]
         self.scope.set_channel_offset(self.select_ch.get(), offset)
         self.offsety = self.y_offset.get()
         self._save_chinfo(self.select_ch.current(), 2, self.y_offset.get())
+
         # print(block_number, '-', self.offsety, '-', self.volt_div_range[self.voltdiv.current()], '-', offset)
 
 
@@ -200,23 +225,34 @@ class Application(tkinter.Tk):
         elif ch==3:
             self.ch4_info[index] = value
 
-    def _graph_update(self):
+    def _graph_update(self, color=['r', 'b', 'y', 'g']):
         self.ax.cla()
         self.canvas.flush_events()
-
+        ratio = self.sampling_offset.get()
         if self.chv1.get():
-            self._channel_plot(1, clr='r')
+            self._channel_plot(1, clr=color[0], ratio=ratio)
         if self.chv2.get():
-            self._channel_plot(2, clr='b')
+            self._channel_plot(2, clr=color[1], ratio=ratio)
         if self.chv3.get():
-            self._channel_plot(3, clr='y')
+            self._channel_plot(3, clr=color[2], ratio=ratio)
         if self.chv4.get():
-            self._channel_plot(4, clr='g')
+            self._channel_plot(4, clr=color[3], ratio=ratio)
         self.ax.legend()
         self.canvas.draw()
-    def _channel_plot(self, num, clr):
+        self.after(3500, self._graph_update)
+    def _channel_plot(self, num, clr, ratio):
         chan = 'CHAN' + str(num)
         data = self.scope.get_waveform_samples(chan)
+        data = data[::ratio]
+        chan = 'CHAN' + str((num))
+        offset = 0.01 * self.scope.get_channel_offset(chan) * self.block_number * self.volt_div_range[self.voltdiv.current()]
+        data = list(np.asarray(data) + offset)
+        print(offset)
+        self.t = np.arange(0, 1200, ratio)
+        self.ax.locator_params(axis="x", nbins=12)
+        self.ax.locator_params(axis="y", nbins=8)
+        # self.ax.axes.yaxis.set_ticklabels([])
+        self.ax.axes.xaxis.set_ticklabels([])
         self.ax.plot(self.t, data, '-r', color=clr, label=('Channel',str(num)))
     def _setvoltdiv(self, event=0):
         try:
