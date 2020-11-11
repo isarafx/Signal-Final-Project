@@ -17,8 +17,6 @@ from matplotlib import style
 from PIL import Image, ImageOps, ImageEnhance
 style.use("ggplot")
 import numpy as np
-import pickle
-import pathlib
 from ds1054z import DS1054Z
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
