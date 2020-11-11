@@ -4,8 +4,12 @@ from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
+from matplotlib import style
 import numpy as np
 from ds1054z import DS1054Z
+
+style.use("ggplot")
+=======
 class Profile:
     def __init__(self, show_ch=[1,0,0,0], ch1=[0,1,0,0], ch2=[0,1,0,0], ch3=[0,1,0,0], ch4=[0,1,0,0], time_div=0, res=1, current_ch=0, ip='192.168.1.1', dev=0):
         self.show_ch = show_ch          #[1,1,1,1] channel 1-4
@@ -18,6 +22,7 @@ class Profile:
         self.current_ch = current_ch    #current ch setting
         self.ip = ip                    #ip
         self.dev = dev
+
 
 class Application:
     def __init__(self, root):
