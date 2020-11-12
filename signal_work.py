@@ -4,17 +4,14 @@
 # github: https://github.com/isarafx/Signal-Final-Project
 # preview video: youtube.com/watch?v=yRimSoQqzYQ
 # 11-11-2020
-
+import webbrowser
 import tkinter
-import tkinter.ttk
 import tkinter.filedialog
 import tkinter.simpledialog
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg, NavigationToolbar2Tk)
-from matplotlib.backend_bases import key_press_handler
-from matplotlib.figure import Figure
+import tkinter.ttk
+from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
 from matplotlib import style
-from PIL import Image, ImageOps, ImageEnhance
+
 style.use("ggplot")
 import numpy as np
 from ds1054z import DS1054Z
@@ -28,12 +25,11 @@ class Application(tkinter.Tk):
     def __init__(self):
         super(Application, self).__init__()
 
-        self.ch1_info = [0, 0, 0]
-        self.ch2_info = [0, 0, 0]
-        self.ch3_info = [0, 0, 0]
-        self.ch4_info = [0, 0, 0]
+        self.marker = '-r'
         self.block_number = 6
         self.ch_range = ['CHAN1', 'CHAN2', 'CHAN3', 'CHAN4']
+        self.ch_plot = [0,0,0,0]
+        self.signal_item = ['vmax', 'vmin', 'vpp', 'vamp', 'vavg', 'vrms', 'period', 'frequency', 'rtime', 'ftime', 'pwidth']
         self.volt_div_range = [100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001]
         self.time_div_range = [50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001, 500E-6,
                                200E-6,
@@ -47,14 +43,37 @@ class Application(tkinter.Tk):
                               '1μs',
                               '500ns', '200ns', '100ns', '50ns', '20ns', '10ns', '5ns']
 
-        self.user_interface()
+        self._user_interface()
 
-    def user_interface(self):
+    def _user_interface(self):
         """
         using only pack layout all of item are declared first then pack
         to make sure everything is configurable
         to understand how frame layed out check in github
         """
+
+        #menubar section
+        menubar = tkinter.Menu(self)
+
+        # create more pulldown menus
+        editmenu = tkinter.Menu(menubar, tearoff=0)
+        editmenu.add_radiobutton(label="-r", command= lambda: self._setmarker('-r'))
+        editmenu.add_radiobutton(label="*", command= lambda: self._setmarker('*'))
+        editmenu.add_radiobutton(label="^", command= lambda: self._setmarker('^'))
+        editmenu.add_radiobutton(label="o", command= lambda: self._setmarker('o'))
+        editmenu.add_radiobutton(label="x", command= lambda: self._setmarker('x'))
+        editmenu.add_radiobutton(label="H", command= lambda: self._setmarker('H'))
+        editmenu.add_radiobutton(label=",", command= lambda: self._setmarker(','))
+        menubar.add_cascade(label="Marker", menu=editmenu)
+        helpmenu = tkinter.Menu(menubar, tearoff=0)
+        helpmenu.add_command(label="Github", command= self._opengithub)
+        helpmenu.add_command(label="Preview", command=self._openpreview)
+        helpmenu.add_command(label="About", command=self.show_info)
+        menubar.add_cascade(label="Help", menu=helpmenu)
+
+        # display the menu
+        self.config(menu=menubar)
+
         self.ip_frame = tkinter.LabelFrame(self, text='enter your ip')
         self.ip_frame.pack(side=tkinter.TOP, fill=tkinter.X)
         useless_var=tkinter.StringVar()
@@ -103,7 +122,7 @@ class Application(tkinter.Tk):
         self.sampling_res_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
         self.sampling_offset = tkinter.Scale(self.sampling_res_frame, orient=tkinter.HORIZONTAL, from_=1, to=15)
         self.sampling_offset.pack(side=tkinter.TOP, fill=tkinter.BOTH)
-        self.sampling_offset.bind("<ButtonRelease-1>")
+        self.sampling_offset.bind("<ButtonRelease-1>", self._graph_update)
 
         self.run_button_frame = tkinter.Frame(self.right_frame)
         self.run_button_frame.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=1)
@@ -111,6 +130,8 @@ class Application(tkinter.Tk):
         self.run_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
         self.stop_button = tkinter.Button(self.run_button_frame, text='STOP', bg='#f65656', fg='#000000', command=self.stop)
         self.stop_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
+        self.update_button = tkinter.Button(self.run_button_frame, text='Update', bg='#8c1515', fg='#000000', command=self._graph_update)
+        self.update_button.pack(side=tkinter.LEFT, expand=1, fill=tkinter.X)
         self.report = tkinter.Label(self, text='some nonsense detail for nerd')
         self.report.pack(side=tkinter.TOP)
 
@@ -146,7 +167,18 @@ class Application(tkinter.Tk):
         self.canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 
         self.channel_frame = tkinter.Frame(self.left_frame)
-        self.channel_frame.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=1)
+        self.channel_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+
+        self.plotdot_frame = tkinter.Frame(self.left_frame)
+        self.plotdot_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+        self.v_div_label1 = tkinter.Label(self.plotdot_frame, text='ch1 v_div =')
+        self.v_div_label2 = tkinter.Label(self.plotdot_frame, text='ch2 v_div =')
+        self.v_div_label3 = tkinter.Label(self.plotdot_frame, text='ch3 v_div =')
+        self.v_div_label4 = tkinter.Label(self.plotdot_frame, text='ch4 v_div =')
+        self.v_div_label1.pack(side=tkinter.LEFT, expand=1)
+        self.v_div_label2.pack(side=tkinter.LEFT, expand=1)
+        self.v_div_label3.pack(side=tkinter.LEFT, expand=1)
+        self.v_div_label4.pack(side=tkinter.LEFT, expand=1)
 
         self.chv1 = tkinter.IntVar()
         self.chv2 = tkinter.IntVar()
@@ -161,12 +193,27 @@ class Application(tkinter.Tk):
         self.ch3.pack(side=tkinter.LEFT, expand=1)
         self.ch4.pack(side=tkinter.LEFT, expand=1)
 
-        self.plotdot_frame = tkinter.Frame(self)
-        self.plotdot_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 
         self.ui_item = [self.voltdiv, self.timediv, self.x_offset, self.y_offset, self.sampling_offset,
                          self.ch1, self.ch2, self.ch3, self.ch4,
                         self.run_button, self.stop_button]
+
+    def _setmarker(self, text):
+        self.marker = text
+
+    def show_info(self):
+        tkinter.messagebox.showinfo("Thank for using", "This Application is Mini project of subject\n"
+                                                       "010123106 Signal and System class KMUTNB\n"
+                                                       "\nMade by \n-Mr.Isara Kunudomchhaiwat 6001012610097 \n"
+                                                       "-Mr.Phichet Eaktrakul 6001012630071 \n"
+                                                       "-Mr.Saksit Wilainuch6001012630144\n"
+                                                       "\ngithub.com/isarafx/Signal-Final-Project")
+
+    def _opengithub(self):
+        webbrowser.open('github.com/isarafx/Signal-Final-Project')
+
+    def _openpreview(self):
+        webbrowser.open('youtube.com/watch?v=yRimSoQqzYQ')
 
     def run(self):
         try:
@@ -186,20 +233,26 @@ class Application(tkinter.Tk):
 
 
     def _connect(self):
-
-        self.ip = self.ip_box.get()
-        self.scope = DS1054Z(self.ip)
-        print("Connected to: ", self.scope.idn)
-        self.report['text'] = self.scope.idn
-        self.status['text'] = "Login Successful"
+        try:
+            self.ip = self.ip_box.get()
+            self.scope = DS1054Z(self.ip)
+            print("Connected to: ", self.scope.idn)
+            self.report['text'] = self.scope.idn
+            self.status['text'] = "Login Successful"
+            self._select_channel()
+            self._text_update()
+            self._check_connection()
+        except Exception as e:
+            self.status['text'] = 'Cant connect to scope'
+            self.report['text'] = e
 
 
     def _offset_x_change(self, event=0):
-        block_number = 6
-        offset = 0.01 * self.x_offset.get() * block_number * self.time_div_range[self.timediv.current()]
+        self.block_number = 6
+        offset = 0.01 * self.x_offset.get() * self.block_number * self.time_div_range[self.timediv.current()]
         self.scope.timebase_offset = 0
         self.scope.timebase_offset = offset
-        self._save_chinfo(self.select_ch.current(), 1, self.x_offset.get())
+        self._graph_update()
         # print(block_number, '-', self.x_offset.get(), '-', self.time_div_range[self.timediv.current()], '-', offset)
 
     def _offset_y_change(self, event=0):
@@ -207,55 +260,83 @@ class Application(tkinter.Tk):
         offset = 0.01 * self.y_offset.get() * self.block_number * self.volt_div_range[self.voltdiv.current()]
         self.scope.set_channel_offset(self.select_ch.get(), offset)
         self.offsety = self.y_offset.get()
-        self._save_chinfo(self.select_ch.current(), 2, self.y_offset.get())
-
+        self._graph_update()
         # print(block_number, '-', self.offsety, '-', self.volt_div_range[self.voltdiv.current()], '-', offset)
 
 
-    #save voltdiv, offset_x, offset_y value to ch_info list
-    def _save_chinfo(self, ch, index, value):
-        if ch==0:
-            self.ch1_info[index] = value
-        elif ch==1:
-            self.ch2_info[index] = value
-        elif ch==2:
-            self.ch3_info[index] = value
-        elif ch==3:
-            self.ch4_info[index] = value
-
-    def _graph_update(self, color=['r', 'b', 'y', 'g']):
-        self.ax.cla()
-        self.canvas.flush_events()
-        ratio = self.sampling_offset.get()
+    def _find_maxdiv(self):
         if self.chv1.get():
-            self._channel_plot(1, clr=color[0], ratio=ratio)
+            if self.maxdiv < self.voltdivlist[0]:
+                self.maxdiv = self.voltdivlist[0]
         if self.chv2.get():
-            self._channel_plot(2, clr=color[1], ratio=ratio)
+            if self.maxdiv < self.voltdivlist[1]:
+                self.maxdiv = self.voltdivlist[1]
         if self.chv3.get():
-            self._channel_plot(3, clr=color[2], ratio=ratio)
+            if self.maxdiv < self.voltdivlist[2]:
+                self.maxdiv = self.voltdivlist[2]
         if self.chv4.get():
-            self._channel_plot(4, clr=color[3], ratio=ratio)
-        self.ax.legend()
-        self.canvas.draw()
-        self.after(3500, self._graph_update)
-    def _channel_plot(self, num, clr, ratio):
-        chan = 'CHAN' + str(num)
-        data = self.scope.get_waveform_samples(chan)
-        data = data[::ratio]
-        chan = 'CHAN' + str((num))
-        offset = 0.01 * self.scope.get_channel_offset(chan) * self.block_number * self.volt_div_range[self.voltdiv.current()]
-        data = list(np.asarray(data) + offset)
-        print(offset)
-        self.t = np.arange(0, 1200, ratio)
-        self.ax.locator_params(axis="x", nbins=12)
-        self.ax.locator_params(axis="y", nbins=8)
-        # self.ax.axes.yaxis.set_ticklabels([])
-        self.ax.axes.xaxis.set_ticklabels([])
-        self.ax.plot(self.t, data, '-r', color=clr, label=('Channel',str(num)))
+            if self.maxdiv < self.voltdivlist[3]:
+                self.maxdiv = self.voltdivlist[3]
+    def _graph_update(self, event=0):
+        try:
+            self.ax.cla()
+            self.canvas.flush_events()
+            ratio = self.sampling_offset.get()
+            self.voltdivlist = [self.scope.get_channel_scale('CHAN1'), self.scope.get_channel_scale('CHAN2'), self.scope.get_channel_scale('CHAN3') , self.scope.get_channel_scale('CHAN4')]
+            self.offsety = [self.scope.get_channel_offset('CHAN1'), self.scope.get_channel_offset('CHAN2'), self.scope.get_channel_offset('CHAN3'), self.scope.get_channel_offset('CHAN4')]
+            plotlist = {}
+            self.t = np.arange(0, 1200)[::ratio]
+            self.maxdiv = -1
+            self._find_maxdiv()
+            color = ['r', 'b', 'y', 'g']
+            if self.chv1.get():
+                plotlist['channel1'] = [self._channel_plot_data(0, ratio), color[0], self.marker]
+            if self.chv2.get():
+                plotlist['channel2'] = [self._channel_plot_data(1, ratio), color[1], self.marker]
+            if self.chv3.get():
+                plotlist['channel3'] = [self._channel_plot_data(2, ratio), color[2], self.marker]
+            if self.chv4.get():
+                plotlist['channel4'] = [self._channel_plot_data(3, ratio), color[3], self.marker]
+
+            # Set axis ranges; by default this will put major ticks every 25.
+            self.ax.set_xlim(0, 1200)
+            self.ax.set_ylim(self.maxdiv*-4, self.maxdiv*4)
+            # Change major ticks to show every 20.
+            self.ax.xaxis.set_major_locator(MultipleLocator(100/ratio))
+            self.ax.yaxis.set_major_locator(MultipleLocator(self.maxdiv))
+            self.ax.grid(which='major', color='#CCCCCC', linestyle='--')
+            self.ax.grid(which='minor', color='#CCCCCC', linestyle=':')
+            self.ax.axes.yaxis.set_ticklabels([])
+            self.ax.axes.xaxis.set_ticklabels([])
+            for key in plotlist:
+                self.ax.plot(self.t, plotlist[key][0], plotlist[key][2], color=plotlist[key][1], label=(key))
+            self.ax.legend()
+            self.canvas.draw()
+        except Exception as e:
+            self.status['text'] = 'Cant reload graph'
+            self.report['text'] = e
+
+    def _text_update(self):
+        """
+        quite unreadable but it set label text by get scope div first
+        then translate to div index and use that index to get volt text list
+        """
+        self.v_div_label1['text'] = 'ch1 v_div ='+self.volt_div_text[self.volt_div_range.index(self.scope.get_channel_scale('CHAN1'))]
+        self.v_div_label2['text'] = 'ch2 v_div ='+self.volt_div_text[self.volt_div_range.index(self.scope.get_channel_scale('CHAN2'))]
+        self.v_div_label3['text'] = 'ch3 v_div ='+self.volt_div_text[self.volt_div_range.index(self.scope.get_channel_scale('CHAN3'))]
+        self.v_div_label4['text'] = 'ch4 v_div ='+self.volt_div_text[self.volt_div_range.index(self.scope.get_channel_scale('CHAN4'))]
+        self.after(1000, self._text_update)
+    def _channel_plot_data(self, ch, ratio):
+        chan = 'CHAN' + str(ch+1)
+        data = self.scope.get_waveform_samples(chan)[::ratio]
+        data = list(np.asarray(data) + self.offsety[ch])
+        data = np.array(data, dtype=float) * (self.maxdiv / self.voltdivlist[ch])
+        return data
+
     def _setvoltdiv(self, event=0):
         try:
             self.scope.set_channel_scale(self.select_ch.get(), self.volt_div_range[self.voltdiv.current()])
-            self._save_chinfo(self.select_ch.current(), 0, self.voltdiv.current())
+            self._graph_update()
         except Exception as e:print(e)
 
     def _settimediv(self, event=0):
@@ -264,24 +345,31 @@ class Application(tkinter.Tk):
         except Exception as e: print(e)
 
     def _select_channel(self, event=0):
-        #get channel info and change combo box first
+        try:
+            #get channel info and change combo box first
+            v_div = self.scope.get_channel_scale(self.select_ch.get())
+            v_off = self.scope.get_channel_offset(self.select_ch.get())
+            t_off = self.scope.timebase_offset
+            t_div = self.scope.timebase_scale
+            time_index = self.time_div_range.index(t_div)
+            volt_index = self.volt_div_range.index(v_div)
+            v_offset_percent = (v_off*100)/(self.block_number * v_div)
+            t_offset_percent = (t_off*100)/(self.block_number * t_div)
+            self.voltdiv.current(volt_index)
+            self.timediv.current(time_index)
+            self.y_offset.set(v_offset_percent)
+            self.x_offset.set(t_offset_percent)
+        except Exception as e:
+            self.status['text'] = 'Cant select channel'
+            self.report['text'] = e
 
-        if self.select_ch.get() == 'CHAN1':
-            listy = self.ch1_info
-        elif self.select_ch.get() == 'CHAN2':
-            listy = self.ch2_info
-        elif self.select_ch.get() == 'CHAN3':
-            listy = self.ch3_info
-        elif self.select_ch.get() == 'CHAN4':
-            listy = self.ch4_info
-            print(self.select_ch.get())
-        else:
-            listy = [0, 0, 0]
-        print(self.select_ch.get())
-        print(listy)
-        self.voltdiv.current(listy[0])
-        self.y_offset.set(listy[1])
-        self.x_offset.set(listy[2])
+    def _check_connection(self):
+        try:
+            self.scope.idn
+        except Exception as e:
+            self.status['text'] = 'Scope Disconnected!'
+            self.report['text'] = e
+        self.after(1000, self._check_connection)
 
 
 root = Application()
