@@ -2,14 +2,14 @@
 
 # Signal Final Project
 
-This is group final project in 010123106 Signal and System class KMUTNB.<br>
-An GUI program to control DS1054Z using Tkinter and DS1054Z class
+This is a group final project for the 010123106 Signal and System class at KMUTNB.<br>
+The project involves a GUI program to control DS1054Z using Tkinter and DS1054Z class.
 
-only for Python >= 3.x<br>
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install dependency before running program.<br>
-codee.py is test file,<br> realwork is testing for gui and  signal_work.py is main program<br>
-wave_sample folder is contain various of signal list that can be use to plot
-<br>when you dont have access to the equiqment(for conveniently coding) <br>
+The program only works for Python >= 3.x.  <br>
+Before running the program, please use the package manager pip to install dependencies.<br>
+
+The wave_sample folder contains a list of various signals that can be used to plot,<br>
+in case you don't have access to the equipment for convenient coding.
 
 ##How to use<br>
 Create new enviroment or using the exist one and git pull this file
@@ -38,10 +38,10 @@ python signal_work.py
 * Tkinter - gui
 * [Matplotlib](https://github.com/matplotlib/matplotlib) - for plotting graph
 
-Our Group consist of 3 members
+Our group consists of three members:
 
-  - Mr.Isara Kunudomchhaiwat 6001012610097
-  - Mr.Phichet Eaktrakul 6001012630071
-  - Mr.Saksit Wilainuch6001012630144
+  - Mr.Isara Kunudomchhaiwat, 6001012610097
+  - Mr.Phichet Eaktrakul, 6001012630071
+  - Mr.Saksit Wilainuch, 6001012630144
 
 
